@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    RGB IR Remote Bulb — integration icon.
+    Three circles in additive RGB layout. Each overlap region is drawn as
+    a separate clipped shape so the colours add properly without depending
+    on mix-blend-mode (rsvg-convert ignores it).
+    A pair of curved IR waves to the right and a soft halo for depth.
+  -->
+
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="50%" r="55%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="55%"  stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ir" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ff9a3d" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ff4f8a" stop-opacity="0.7"/>
+    </linearGradient>
+
+    <!-- Three masks: each isolates one circle so we can clip overlaps. -->
+    <clipPath id="r-clip"><circle cx="200" cy="208" r="118"/></clipPath>
+    <clipPath id="g-clip"><circle cx="312" cy="208" r="118"/></clipPath>
+    <clipPath id="b-clip"><circle cx="256" cy="308" r="118"/></clipPath>
+  </defs>
+
+  <!-- Rounded-square background -->
+  <rect width="512" height="512" rx="96" ry="96" fill="#0e1024"/>
+
+  <!-- Halo glow behind the bulb -->
+  <circle cx="252" cy="252" r="210" fill="url(#halo)"/>
+
+  <!-- IR wave arcs (right side accent) -->
+  <g fill="none" stroke="url(#ir)" stroke-linecap="round">
+    <path d="M 408 196 A 28 60 0 0 1 408 316"  stroke-width="11"/>
+    <path d="M 440 168 A 42 88 0 0 1 440 344"  stroke-width="9"  opacity="0.85"/>
+    <path d="M 470 138 A 56 118 0 0 1 470 374" stroke-width="8"  opacity="0.6"/>
+  </g>
+
+  <!--
+    Additive RGB mixing — drawn as 7 layered shapes.
+    Singles (R/G/B), three pair overlaps (RG=yellow, RB=magenta, GB=cyan),
+    triple overlap (white). Each is the intersection of clip paths, achieved
+    by nesting <g clip-path> elements.
+  -->
+
+  <!-- R only -->
+  <g clip-path="url(#r-clip)">
+    <circle cx="200" cy="208" r="118" fill="#ff2050"/>
+  </g>
+  <!-- G only -->
+  <g clip-path="url(#g-clip)">
+    <circle cx="312" cy="208" r="118" fill="#20ff70"/>
+  </g>
+  <!-- B only -->
+  <g clip-path="url(#b-clip)">
+    <circle cx="256" cy="308" r="118" fill="#3098ff"/>
+  </g>
+
+  <!-- R ∩ G = yellow -->
+  <g clip-path="url(#r-clip)">
+    <g clip-path="url(#g-clip)">
+      <circle cx="256" cy="208" r="200" fill="#ffe040"/>
+    </g>
+  </g>
+  <!-- R ∩ B = magenta -->
+  <g clip-path="url(#r-clip)">
+    <g clip-path="url(#b-clip)">
+      <circle cx="228" cy="258" r="200" fill="#ff40c0"/>
+    </g>
+  </g>
+  <!-- G ∩ B = cyan -->
+  <g clip-path="url(#g-clip)">
+    <g clip-path="url(#b-clip)">
+      <circle cx="284" cy="258" r="200" fill="#30e8e8"/>
+    </g>
+  </g>
+  <!-- R ∩ G ∩ B = white -->
+  <g clip-path="url(#r-clip)">
+    <g clip-path="url(#g-clip)">
+      <g clip-path="url(#b-clip)">
+        <circle cx="256" cy="240" r="200" fill="#ffffff"/>
+      </g>
+    </g>
+  </g>
+</svg>

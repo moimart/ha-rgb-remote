@@ -8,21 +8,21 @@ VERIFIED (captured + decoded with valid NEC inverse-byte checksums):
     BRIGHTNESS_UP = 0x15
     BRIGHTNESS_DOWN = 0x09
     ON            = 0x45
+    OFF           = 0x47
+    WHITE         = 0x4A
     RED_1         = 0x16
     GREEN_2       = 0x18  (the "Lime" — row-2 green, below the main "G")
 
 UNVERIFIED (placeholders from the WoodUino 24-key reference table; left in
 so the enum loads but kept out of EFFECT_TO_BUTTON):
-    OFF, GREEN_1, BLUE_1, WHITE,
+    GREEN_1, BLUE_1,
     RED_2, BLUE_2, FLASH,
     RED_3, GREEN_3, BLUE_3, STROBE,
     RED_4, GREEN_4, BLUE_4, FADE,
     RED_5, GREEN_5, BLUE_5, SMOOTH
 
-The four buttons captured but garbled on the first pass (off, green_1,
-blue_1, white) need re-learning — the Broadlink missed the NEC leader
-pulse on those, so the bytes decoded as noise. Re-learn them and we can
-expose the full main-colour row.
+The two main-row colour buttons (green_1, blue_1) still need re-learning
+— their first two capture attempts had garbled NEC leaders.
 """
 
 from __future__ import annotations
@@ -50,13 +50,13 @@ class BulbCommand(IntEnum):
     BRIGHTNESS_UP = 0x15
     BRIGHTNESS_DOWN = 0x09
     ON = 0x45
+    OFF = 0x47
+    WHITE = 0x4A  # the main-row "W" button
     RED_1 = 0x16
-    GREEN_2 = 0x18  # the row-2 "Lime" green
+    GREEN_2 = 0x18  # row-2 "Lime" green (below the main "G")
     # --- UNVERIFIED (recapture pending) ---
-    OFF = 0x40
-    GREEN_1 = 0xA0
-    BLUE_1 = 0x60
-    WHITE = 0xE0
+    GREEN_1 = 0xA0  # the main "G" button — captures keep garbling
+    BLUE_1 = 0x60   # the main "B" button — captures keep garbling
     # --- UNVERIFIED placeholders (rest of the colour rows) ---
     RED_2 = 0x10
     BLUE_2 = 0x50
@@ -91,6 +91,7 @@ class BulbCommand(IntEnum):
 EFFECT_TO_BUTTON: dict[str, BulbCommand] = {
     "Red": BulbCommand.RED_1,
     "Lime": BulbCommand.GREEN_2,
+    "White": BulbCommand.WHITE,
 }
 
 EFFECT_LIST: list[str] = list(EFFECT_TO_BUTTON.keys())
