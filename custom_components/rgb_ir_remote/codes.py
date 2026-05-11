@@ -9,20 +9,18 @@ VERIFIED (captured + decoded with valid NEC inverse-byte checksums):
     BRIGHTNESS_DOWN = 0x09
     ON            = 0x45
     OFF           = 0x47
-    WHITE         = 0x4A
     RED_1         = 0x16
+    GREEN_1       = 0x19  (the main "G" button)
+    BLUE_1        = 0x0D  (the main "B" button)
+    WHITE         = 0x4A
     GREEN_2       = 0x18  (the "Lime" — row-2 green, below the main "G")
 
 UNVERIFIED (placeholders from the WoodUino 24-key reference table; left in
 so the enum loads but kept out of EFFECT_TO_BUTTON):
-    GREEN_1, BLUE_1,
     RED_2, BLUE_2, FLASH,
     RED_3, GREEN_3, BLUE_3, STROBE,
     RED_4, GREEN_4, BLUE_4, FADE,
     RED_5, GREEN_5, BLUE_5, SMOOTH
-
-The two main-row colour buttons (green_1, blue_1) still need re-learning
-— their first two capture attempts had garbled NEC leaders.
 """
 
 from __future__ import annotations
@@ -51,12 +49,11 @@ class BulbCommand(IntEnum):
     BRIGHTNESS_DOWN = 0x09
     ON = 0x45
     OFF = 0x47
-    WHITE = 0x4A  # the main-row "W" button
-    RED_1 = 0x16
+    WHITE = 0x4A    # the main-row "W" button
+    RED_1 = 0x16    # the main "R" button
+    GREEN_1 = 0x19  # the main "G" button
+    BLUE_1 = 0x0D   # the main "B" button
     GREEN_2 = 0x18  # row-2 "Lime" green (below the main "G")
-    # --- UNVERIFIED (recapture pending) ---
-    GREEN_1 = 0xA0  # the main "G" button — captures keep garbling
-    BLUE_1 = 0x60   # the main "B" button — captures keep garbling
     # --- UNVERIFIED placeholders (rest of the colour rows) ---
     RED_2 = 0x10
     BLUE_2 = 0x50
@@ -90,8 +87,10 @@ class BulbCommand(IntEnum):
 # Add more entries here as you capture and confirm them.
 EFFECT_TO_BUTTON: dict[str, BulbCommand] = {
     "Red": BulbCommand.RED_1,
-    "Lime": BulbCommand.GREEN_2,
+    "Green": BulbCommand.GREEN_1,
+    "Blue": BulbCommand.BLUE_1,
     "White": BulbCommand.WHITE,
+    "Lime": BulbCommand.GREEN_2,
 }
 
 EFFECT_LIST: list[str] = list(EFFECT_TO_BUTTON.keys())
