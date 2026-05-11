@@ -1,12 +1,14 @@
 """NEC code table for the 24-key Chinese RGB bulb remote.
 
-v0.1.2 — SMOKE-TEST BUILD for the "Practical Series II" GU10 RGB bulb.
+v0.1.3 — SMOKE-TEST BUILD for the "Practical Series II" GU10 RGB bulb.
 
-Only the GREEN_1 button (`address=0x00, command=0x18`) has been captured
-and verified against an actual bulb. All other command bytes below are the
-WoodUino 24-key reference values and are *probably wrong* for this bulb
-factory — they're left in place so the integration loads, but only the
-"Green" effect is exposed in EFFECT_TO_BUTTON until the rest are captured.
+Only the row-2 green button (the lighter green directly below the main
+"G" button on the remote) has been captured and verified:
+    address=0x00, command=0x18  → exposed as effect "Lime".
+All other command bytes below are the WoodUino 24-key reference values
+and are *probably wrong* for this bulb factory — they're left in place
+so the integration loads, but only "Lime" is exposed in
+EFFECT_TO_BUTTON until the rest are captured.
 
 If your remote does not respond to the green code, capture one button with
 the Broadlink `remote.learn_command` service, decode it (e.g. with `irdb`
@@ -44,14 +46,14 @@ class BulbCommand(IntEnum):
     ON = 0xC0
 
     RED_1 = 0x20
-    # --- VERIFIED ---
-    GREEN_1 = 0x18  # captured from Practical Series II
-    # --- UNVERIFIED ---
+    GREEN_1 = 0xA0  # remote button labeled "G" — UNVERIFIED
     BLUE_1 = 0x60
     WHITE = 0xE0
 
     RED_2 = 0x10
-    GREEN_2 = 0x90
+    # --- VERIFIED ---
+    GREEN_2 = 0x18  # row-2 green (below the "G" button) — Practical Series II
+    # --- UNVERIFIED ---
     BLUE_2 = 0x50
     FLASH = 0xD0
 
@@ -82,7 +84,7 @@ class BulbCommand(IntEnum):
 # Effect list reduced to verified codes only for v0.1.x smoke test.
 # Add more entries here as you capture and confirm them.
 EFFECT_TO_BUTTON: dict[str, BulbCommand] = {
-    "Green": BulbCommand.GREEN_1,
+    "Lime": BulbCommand.GREEN_2,
 }
 
 EFFECT_LIST: list[str] = list(EFFECT_TO_BUTTON.keys())
