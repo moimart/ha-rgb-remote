@@ -25,17 +25,15 @@
     <clipPath id="b-clip"><circle cx="256" cy="308" r="118"/></clipPath>
   </defs>
 
-  <!-- Rounded-square background -->
-  <rect width="512" height="512" rx="96" ry="96" fill="#0e1024"/>
-
-  <!-- Halo glow behind the bulb -->
+  <!-- Soft halo glow behind the bulb (works on both light and dark themes) -->
   <circle cx="252" cy="252" r="210" fill="url(#halo)"/>
 
-  <!-- IR wave arcs (right side accent) -->
+  <!-- IR wave arcs (right side accent) — chord x values + rx tuned so the
+       outermost arc's right edge sits at x≈500 (8px margin from viewBox). -->
   <g fill="none" stroke="url(#ir)" stroke-linecap="round">
-    <path d="M 408 196 A 28 60 0 0 1 408 316"  stroke-width="11"/>
-    <path d="M 440 168 A 42 88 0 0 1 440 344"  stroke-width="9"  opacity="0.85"/>
-    <path d="M 470 138 A 56 118 0 0 1 470 374" stroke-width="8"  opacity="0.6"/>
+    <path d="M 412 200 A 26 56  0 0 1 412 312"  stroke-width="11"/>
+    <path d="M 438 172 A 36 84  0 0 1 438 340"  stroke-width="9"  opacity="0.85"/>
+    <path d="M 460 144 A 44 112 0 0 1 460 368"  stroke-width="8"  opacity="0.6"/>
   </g>
 
   <!--
