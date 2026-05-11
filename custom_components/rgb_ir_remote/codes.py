@@ -1,8 +1,8 @@
 """NEC code table for the 24-key Chinese RGB bulb remote.
 
-All buttons share address 0xF7; only the command byte differs. The encoder in
-`infrared_protocols.commands.nec.NECCommand` auto-computes the inverted address
-and command bytes, so we pass the raw command byte directly.
+All buttons share address 0xF7; only the command byte differs. The encoder
+auto-computes the inverted address and command bytes, so we pass the raw
+command byte directly.
 
 If your remote does not respond to these codes, capture one button with the
 Broadlink `remote.learn_command` service, decode it (e.g. with `irdb` or
@@ -13,7 +13,12 @@ from __future__ import annotations
 
 from enum import IntEnum
 
-from infrared_protocols.commands.nec import NECCommand
+try:
+    # infrared-protocols >= 3.0 — split into commands/ subpackage
+    from infrared_protocols.commands.nec import NECCommand
+except ImportError:
+    # infrared-protocols == 2.0.0 (shipped with HA 2026.4/2026.5) — flat module
+    from infrared_protocols.commands import NECCommand  # type: ignore[no-redef]
 
 ADDRESS = 0xF7
 
