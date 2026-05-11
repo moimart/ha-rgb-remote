@@ -122,22 +122,18 @@ class RgbIrBulb(LightEntity, RestoreEntity):
             await self._press(button)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the bulb on, optionally setting effect and/or brightness."""
-        was_on = self._attr_is_on
+        """Turn the bulb on, optionally setting effect and/or brightness.
 
-        if not was_on:
-            await self._press(BulbCommand.ON)
-            # Physical bulb wakes at full brightness on the row last selected.
-            self._step = BRIGHTNESS_STEPS
-
+        v0.1.2 smoke-test: the explicit ON code is not yet verified for this
+        bulb factory, so we don't pre-press it. Selecting any colour effect
+        on these bulbs implicitly powers the bulb on, which is enough to
+        validate the IR transport end-to-end.
+        """
         if (effect := kwargs.get(ATTR_EFFECT)) is not None:
             button = EFFECT_TO_BUTTON.get(effect)
             if button is None:
                 _LOGGER.warning("Unknown effect %s, ignoring", effect)
             else:
-                if was_on:
-                    # Settle after the previous frame so the bulb sees a fresh code.
-                    await asyncio.sleep(INTER_PRESS_DELAY)
                 await self._press(button)
                 self._attr_effect = effect
                 # Selecting a colour/mode resets brightness to max on these bulbs.
