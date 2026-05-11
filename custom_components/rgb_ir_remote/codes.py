@@ -1,18 +1,28 @@
-"""NEC code table for the 24-key Chinese RGB bulb remote.
+"""NEC code table for the Practical Series II GU10 RGB bulb.
 
-v0.1.3 — SMOKE-TEST BUILD for the "Practical Series II" GU10 RGB bulb.
+Captured against the user's actual hardware on 2026-05-11 with a Broadlink
+RM4 Pro. The bulb uses standard NEC at 38 kHz with address 0x00.
 
-Only the row-2 green button (the lighter green directly below the main
-"G" button on the remote) has been captured and verified:
-    address=0x00, command=0x18  → exposed as effect "Lime".
-All other command bytes below are the WoodUino 24-key reference values
-and are *probably wrong* for this bulb factory — they're left in place
-so the integration loads, but only "Lime" is exposed in
-EFFECT_TO_BUTTON until the rest are captured.
+VERIFIED (captured + decoded with valid NEC inverse-byte checksums):
+    address       = 0x00
+    BRIGHTNESS_UP = 0x15
+    BRIGHTNESS_DOWN = 0x09
+    ON            = 0x45
+    RED_1         = 0x16
+    GREEN_2       = 0x18  (the "Lime" — row-2 green, below the main "G")
 
-If your remote does not respond to the green code, capture one button with
-the Broadlink `remote.learn_command` service, decode it (e.g. with `irdb`
-or `rtl_433`), and replace the address constant or command byte below.
+UNVERIFIED (placeholders from the WoodUino 24-key reference table; left in
+so the enum loads but kept out of EFFECT_TO_BUTTON):
+    OFF, GREEN_1, BLUE_1, WHITE,
+    RED_2, BLUE_2, FLASH,
+    RED_3, GREEN_3, BLUE_3, STROBE,
+    RED_4, GREEN_4, BLUE_4, FADE,
+    RED_5, GREEN_5, BLUE_5, SMOOTH
+
+The four buttons captured but garbled on the first pass (off, green_1,
+blue_1, white) need re-learning — the Broadlink missed the NEC leader
+pulse on those, so the bytes decoded as noise. Re-learn them and we can
+expose the full main-colour row.
 """
 
 from __future__ import annotations
@@ -31,29 +41,24 @@ ADDRESS = 0x00
 
 
 class BulbCommand(IntEnum):
-    """24-key RGB bulb remote command codes (command byte of NEC frame).
+    """RGB bulb remote command codes (command byte of NEC frame).
 
-    Only entries flagged VERIFIED below have been confirmed on the
-    Practical Series II bulb. The others are placeholders from the
-    common 24-key reference table — left in so the entity loads, but
-    not exposed via EFFECT_TO_BUTTON yet.
+    See module docstring for which entries are VERIFIED vs UNVERIFIED.
     """
 
-    # --- UNVERIFIED placeholders (probably wrong for Practical Series II) ---
-    BRIGHTNESS_UP = 0x00
-    BRIGHTNESS_DOWN = 0x80
+    # --- VERIFIED ---
+    BRIGHTNESS_UP = 0x15
+    BRIGHTNESS_DOWN = 0x09
+    ON = 0x45
+    RED_1 = 0x16
+    GREEN_2 = 0x18  # the row-2 "Lime" green
+    # --- UNVERIFIED (recapture pending) ---
     OFF = 0x40
-    ON = 0xC0
-
-    RED_1 = 0x20
-    GREEN_1 = 0xA0  # remote button labeled "G" — UNVERIFIED
+    GREEN_1 = 0xA0
     BLUE_1 = 0x60
     WHITE = 0xE0
-
+    # --- UNVERIFIED placeholders (rest of the colour rows) ---
     RED_2 = 0x10
-    # --- VERIFIED ---
-    GREEN_2 = 0x18  # row-2 green (below the "G" button) — Practical Series II
-    # --- UNVERIFIED ---
     BLUE_2 = 0x50
     FLASH = 0xD0
 
@@ -81,9 +86,10 @@ class BulbCommand(IntEnum):
         )
 
 
-# Effect list reduced to verified codes only for v0.1.x smoke test.
+# Only effects backed by VERIFIED command bytes are exposed.
 # Add more entries here as you capture and confirm them.
 EFFECT_TO_BUTTON: dict[str, BulbCommand] = {
+    "Red": BulbCommand.RED_1,
     "Lime": BulbCommand.GREEN_2,
 }
 
