@@ -76,22 +76,57 @@ class BulbCommand(IntEnum):
         )
 
 
-# 12 colour effects (4 reds, 4 greens, 3 blues, white) + 2 cycling animations.
-# Dim, Timer 24H, Timer 1H are not light effects — they'll be exposed as
-# separate button.* entities in a follow-up release.
+# Approximate (hue, saturation) values for each of the 12 reachable colours,
+# eyeballed from the remote photo. Used to snap the HA colour-wheel input
+# to the nearest available preset. Saturation is on the HA scale (0..100).
+COLOUR_PRESETS_HS: dict[BulbCommand, tuple[float, float]] = {
+    BulbCommand.RED_1:   (0,    100),  # pure red
+    BulbCommand.RED_2:   (15,   100),  # orange-red
+    BulbCommand.GREEN_3: (40,   100),  # amber
+    BulbCommand.GREEN_4: (55,   100),  # yellow
+    BulbCommand.GREEN_2: (80,    95),  # lime
+    BulbCommand.GREEN_1: (120,  100),  # green
+    BulbCommand.BLUE_3:  (185,   85),  # light blue (cyan-ish)
+    BulbCommand.BLUE_2:  (205,  100),  # sky blue
+    BulbCommand.BLUE_1:  (240,  100),  # pure blue
+    BulbCommand.RED_3:   (300,  100),  # magenta
+    BulbCommand.RED_4:   (340,   70),  # pink (lighter)
+}
+
+# Saturation below this threshold snaps to White regardless of hue.
+_WHITE_SATURATION_THRESHOLD = 15.0
+
+# Hue weighting vs saturation in the distance metric. Hue dominates because
+# the human eye is more sensitive to hue shifts than to saturation shifts.
+_SATURATION_WEIGHT = 0.35
+
+
+def _circular_hue_distance(a: float, b: float) -> float:
+    """Shortest distance between two hue angles on the 0..360° circle."""
+    d = abs(a - b) % 360
+    return min(d, 360 - d)
+
+
+def nearest_colour_preset(hue: float, saturation: float) -> BulbCommand:
+    """Return the BulbCommand whose colour preset is closest to (hue, saturation).
+
+    Low-saturation requests snap to WHITE; otherwise we minimise a weighted
+    circular hue + saturation distance over the 11 saturated presets.
+    """
+    if saturation < _WHITE_SATURATION_THRESHOLD:
+        return BulbCommand.WHITE
+
+    def distance(preset: tuple[float, float]) -> float:
+        hd = _circular_hue_distance(hue, preset[0])
+        sd = abs(saturation - preset[1])
+        return hd + sd * _SATURATION_WEIGHT
+
+    return min(COLOUR_PRESETS_HS.items(), key=lambda kv: distance(kv[1]))[0]
+
+
+# Only cycling animations remain as named effects now that named colours
+# are reachable via the HS colour wheel.
 EFFECT_TO_BUTTON: dict[str, BulbCommand] = {
-    "Red": BulbCommand.RED_1,
-    "Orange": BulbCommand.RED_2,
-    "Magenta": BulbCommand.RED_3,
-    "Pink": BulbCommand.RED_4,
-    "Green": BulbCommand.GREEN_1,
-    "Lime": BulbCommand.GREEN_2,
-    "Amber": BulbCommand.GREEN_3,
-    "Yellow": BulbCommand.GREEN_4,
-    "Blue": BulbCommand.BLUE_1,
-    "Sky Blue": BulbCommand.BLUE_2,
-    "Light Blue": BulbCommand.BLUE_3,
-    "White": BulbCommand.WHITE,
     "Flash": BulbCommand.FLASH,
     "Smooth": BulbCommand.SMOOTH,
 }
