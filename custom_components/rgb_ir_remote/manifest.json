@@ -1,9 +1,10 @@
 {
   "domain": "rgb_ir_remote",
   "name": "RGB IR Remote Bulb",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "codeowners": ["@moimart"],
   "config_flow": true,
+  "dependencies": ["infrared"],
   "documentation": "https://github.com/moimart/ha-rgb-remote",
   "iot_class": "assumed_state",
   "issue_tracker": "https://github.com/moimart/ha-rgb-remote/issues",

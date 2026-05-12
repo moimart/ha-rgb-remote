@@ -18,6 +18,7 @@ from homeassistant.components.light import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -33,6 +34,7 @@ from .const import BRIGHTNESS_STEPS, CONF_TRANSMITTER, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 INTER_PRESS_DELAY = 0.12  # seconds between consecutive IR frames
+IR_SEND_TIMEOUT = 8.0  # seconds; bail out if the transmitter hangs
 
 
 async def async_setup_entry(
@@ -103,10 +105,8 @@ class RgbIrBulb(LightEntity, RestoreEntity):
         self._attr_brightness = _step_to_brightness(self._step)
         self._attr_is_on = False
         self._attr_effect = None
-        # Default to White on first start so the wheel has somewhere to point.
-        self._attr_hs_color = COLOUR_PRESETS_HS.get(
-            BulbCommand.RED_1, (0.0, 100.0)
-        )
+        # Default to White on first start so the wheel cursor has a sensible
+        # initial position (saturation=0 → centre of the wheel).
         self._attr_hs_color = (0.0, 0.0)
 
     async def async_added_to_hass(self) -> None:
@@ -132,11 +132,27 @@ class RgbIrBulb(LightEntity, RestoreEntity):
             self._attr_hs_color = (float(hs[0]), float(hs[1]))
 
     async def _press(self, button: BulbCommand) -> None:
-        """Send one IR frame for a single button press."""
+        """Send one IR frame for a single button press.
+
+        Times out after ``IR_SEND_TIMEOUT`` so an unresponsive transmitter
+        can't hold the lock indefinitely and freeze every subsequent press.
+        """
         async with self._send_lock:
-            await async_send_command(
-                self.hass, self._transmitter, button.to_command()
-            )
+            try:
+                async with asyncio.timeout(IR_SEND_TIMEOUT):
+                    await async_send_command(
+                        self.hass, self._transmitter, button.to_command()
+                    )
+            except TimeoutError as err:
+                _LOGGER.warning(
+                    "IR send via %s timed out after %ss",
+                    self._transmitter,
+                    IR_SEND_TIMEOUT,
+                )
+                raise HomeAssistantError(
+                    f"IR transmitter {self._transmitter} did not respond "
+                    f"within {IR_SEND_TIMEOUT}s"
+                ) from err
 
     async def _press_repeated(self, button: BulbCommand, count: int) -> None:
         """Press a button N times, spaced to be reliably decoded."""
