@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_REMOTE_TYPE, REMOTE_TYPE_GENERIC_1
+from .definitions import CONF_REMOTE_TYPE, REMOTE_TYPE_GENERIC_1
 
 _LOGGER = logging.getLogger(__name__)
 

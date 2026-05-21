@@ -28,7 +28,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .codes import PROFILES, RemoteProfile, nearest_colour_effect
-from .const import (
+from .definitions import (
     BRIGHTNESS_STEPS,
     CONF_REMOTE_TYPE,
     CONF_TRANSMITTER,

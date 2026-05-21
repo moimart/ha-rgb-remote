@@ -19,7 +19,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .codes import PROFILES
-from .const import (
+from .definitions import (
     CONF_REMOTE_TYPE,
     CONF_TRANSMITTER,
     DOMAIN,

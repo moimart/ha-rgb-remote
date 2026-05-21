@@ -1,7 +1,7 @@
 {
   "domain": "rgb_ir_remote",
   "name": "RGB IR Remote Bulb",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "codeowners": ["@moimart"],
   "config_flow": true,
   "dependencies": ["infrared"],
