@@ -66,13 +66,15 @@ class RemoteProfile:
 
     @property
     def effect_list(self) -> list[str]:
-        """The combined effect list shown to HA (colours + animations)."""
-        return [*self.colours, *self.animations]
+        """Effects exposed to HA — animation modes only.
+
+        Colours are reachable through the HS colour wheel and don't belong
+        in the effect dropdown (it'd duplicate every preset).
+        """
+        return list(self.animations)
 
     def effect_byte(self, effect_name: str) -> int | None:
-        """Return the byte for an effect name, whether colour or animation."""
-        if (preset := self.colours.get(effect_name)) is not None:
-            return preset.byte
+        """Return the byte for an animation effect (Flash/Strobe/Fade/Smooth)."""
         return self.animations.get(effect_name)
 
     @property
