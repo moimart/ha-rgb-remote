@@ -126,19 +126,38 @@ LEDLAMP = RemoteProfile(
     off_byte=0x02,
     bright_up_byte=0x00,
     bright_down_byte=0x01,
+    # Bytes 0x00 .. 0x0B Flipper-Zero verified; 0x0C .. 0x17 extrapolated
+    # from the same sequential pattern (the chip enumerates physical
+    # buttons by remote-layout position). HS values are eyeballed; if
+    # the wheel picks the wrong colour for a given hue, tune the preset.
     colours={
-        "Red":     ColourPreset(byte=0x04, hue=0,   saturation=100),
-        "Green":   ColourPreset(byte=0x05, hue=120, saturation=100),
-        "Blue":    ColourPreset(byte=0x06, hue=240, saturation=100),
-        "White":   ColourPreset(byte=0x07, hue=0,   saturation=0),
-        # Row 3 — Flipper-verified bytes, HS values are eyeballed and may
-        # need refinement after a real-bulb test.
-        "Red 2":   ColourPreset(byte=0x08, hue=15,  saturation=100),
-        "Green 2": ColourPreset(byte=0x09, hue=80,  saturation=95),
-        "Blue 2":  ColourPreset(byte=0x0A, hue=200, saturation=100),
+        # === Row 1 — main colours (verified) ===
+        "Red":          ColourPreset(byte=0x04, hue=0,   saturation=100),
+        "Green":        ColourPreset(byte=0x05, hue=120, saturation=100),
+        "Blue":         ColourPreset(byte=0x06, hue=240, saturation=100),
+        "White":        ColourPreset(byte=0x07, hue=0,   saturation=0),
+        # === Row 2 — second-shade row (verified) ===
+        "Red 2":        ColourPreset(byte=0x08, hue=12,  saturation=100),
+        "Green 2":      ColourPreset(byte=0x09, hue=80,  saturation=100),
+        "Blue 2":       ColourPreset(byte=0x0A, hue=220, saturation=100),
+        # === Row 3 — orange / cyan / purple (extrapolated) ===
+        "Orange":       ColourPreset(byte=0x0C, hue=25,  saturation=100),
+        "Cyan":         ColourPreset(byte=0x0D, hue=175, saturation=100),
+        "Purple":       ColourPreset(byte=0x0E, hue=290, saturation=100),
+        # === Row 4 — light orange / sky blue / violet (extrapolated) ===
+        "Light Orange": ColourPreset(byte=0x10, hue=38,  saturation=100),
+        "Sky Blue":     ColourPreset(byte=0x11, hue=200, saturation=100),
+        "Violet":       ColourPreset(byte=0x12, hue=265, saturation=100),
+        # === Row 5 — yellow / baby blue / magenta (extrapolated) ===
+        "Yellow":       ColourPreset(byte=0x14, hue=55,  saturation=100),
+        "Baby Blue":    ColourPreset(byte=0x15, hue=200, saturation=50),
+        "Magenta":      ColourPreset(byte=0x16, hue=310, saturation=100),
     },
     animations={
-        "Flash": 0x0B,
+        "Flash":  0x0B,   # verified
+        "Strobe": 0x0F,   # extrapolated
+        "Fade":   0x13,   # extrapolated
+        "Smooth": 0x17,   # extrapolated
     },
 )
 
