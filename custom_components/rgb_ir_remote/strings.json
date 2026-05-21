@@ -3,16 +3,18 @@
     "step": {
       "user": {
         "title": "Add an RGB IR bulb",
-        "description": "Pick which IR transmitter should send commands to this bulb and give the bulb a name. If you have several Broadlinks or ESPHome blasters, choose the one in the same room as the bulb.",
+        "description": "Pick the remote type that matches your bulb, give it a name, and choose which IR transmitter should drive it. If you have several Broadlinks or ESPHome blasters, choose the one in the same room as the bulb.",
         "data": {
           "name": "Bulb name",
+          "remote_type": "Remote type",
           "transmitter": "IR transmitter"
         }
       }
     },
     "error": {
       "name_required": "Please enter a name.",
-      "transmitter_unavailable": "That transmitter is no longer available."
+      "transmitter_unavailable": "That transmitter is no longer available.",
+      "remote_type_invalid": "Unknown remote type."
     },
     "abort": {
       "no_emitters": "No IR transmitters are configured in Home Assistant. Set up a Broadlink (or ESPHome IR blaster) first, then try again.",

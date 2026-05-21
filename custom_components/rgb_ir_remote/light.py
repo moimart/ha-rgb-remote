@@ -1,4 +1,9 @@
-"""Light entity for an RGB IR remote-controlled bulb."""
+"""Light entity for an RGB IR remote-controlled bulb.
+
+The entity is driven by a :class:`RemoteProfile` looked up from the
+config entry's ``remote_type`` field, so the same code path handles every
+supported remote without conditional branches.
+"""
 
 from __future__ import annotations
 
@@ -22,14 +27,14 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .codes import (
-    COLOUR_PRESETS_HS,
-    EFFECT_LIST,
-    EFFECT_TO_BUTTON,
-    BulbCommand,
-    nearest_colour_preset,
+from .codes import PROFILES, RemoteProfile, nearest_colour_effect
+from .const import (
+    BRIGHTNESS_STEPS,
+    CONF_REMOTE_TYPE,
+    CONF_TRANSMITTER,
+    DOMAIN,
+    REMOTE_TYPE_GENERIC_1,
 )
-from .const import BRIGHTNESS_STEPS, CONF_TRANSMITTER, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,12 +48,20 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the bulb entity from a config entry."""
+    remote_type: str = entry.data.get(CONF_REMOTE_TYPE, REMOTE_TYPE_GENERIC_1)
+    profile = PROFILES.get(remote_type)
+    if profile is None:
+        raise HomeAssistantError(
+            f"Unknown remote type {remote_type!r} on config entry {entry.entry_id}; "
+            f"valid choices are {list(PROFILES)}"
+        )
     async_add_entities(
         [
             RgbIrBulb(
                 entry_id=entry.entry_id,
                 name=entry.data[CONF_NAME],
                 transmitter=entry.data[CONF_TRANSMITTER],
+                profile=profile,
             )
         ]
     )
@@ -68,15 +81,7 @@ def _step_to_brightness(step: int) -> int:
 
 
 class RgbIrBulb(LightEntity, RestoreEntity):
-    """A bulb driven by NEC IR commands.
-
-    Colour: continuous HS picker that snaps to the nearest of 12 reachable
-    presets and sends that IR code; `hs_color` is updated to the snapped
-    value so the wheel cursor honestly reflects what the bulb did.
-
-    Brightness: dead-reckoned in BRIGHTNESS_STEPS buckets — every BR+ / BR-
-    press shifts one bucket. Pressing a colour or power-on resets the bucket
-    to max, matching how the physical bulb behaves.
+    """A bulb driven by NEC IR commands sourced from a RemoteProfile.
 
     No feedback channel exists, so state is assumed.
     """
@@ -88,25 +93,33 @@ class RgbIrBulb(LightEntity, RestoreEntity):
     _attr_supported_color_modes = {ColorMode.HS}
     _attr_color_mode = ColorMode.HS
     _attr_supported_features = LightEntityFeature.EFFECT
-    _attr_effect_list = EFFECT_LIST
 
-    def __init__(self, *, entry_id: str, name: str, transmitter: str) -> None:
+    def __init__(
+        self,
+        *,
+        entry_id: str,
+        name: str,
+        transmitter: str,
+        profile: RemoteProfile,
+    ) -> None:
         """Initialise the bulb."""
+        self._profile = profile
         self._transmitter = transmitter
         self._attr_unique_id = entry_id
+        self._attr_effect_list = profile.effect_list
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry_id)},
             "name": name,
-            "manufacturer": "Practical Series",
-            "model": "II GU10 RGB IR Bulb",
+            "manufacturer": "Practical Series" if profile.id == "generic_1" else "Generic",
+            "model": profile.label,
         }
         self._send_lock = asyncio.Lock()
         self._step = BRIGHTNESS_STEPS
         self._attr_brightness = _step_to_brightness(self._step)
         self._attr_is_on = False
         self._attr_effect = None
-        # Default to White on first start so the wheel cursor has a sensible
-        # initial position (saturation=0 → centre of the wheel).
+        # Default to the centre of the wheel (low-saturation point) so the
+        # cursor starts somewhere sensible.
         self._attr_hs_color = (0.0, 0.0)
 
     async def async_added_to_hass(self) -> None:
@@ -121,7 +134,7 @@ class RgbIrBulb(LightEntity, RestoreEntity):
             self._attr_brightness = brightness
             self._step = _brightness_to_step(brightness)
         effect = last_state.attributes.get(ATTR_EFFECT)
-        if isinstance(effect, str) and effect in EFFECT_TO_BUTTON:
+        if isinstance(effect, str) and effect in self._attr_effect_list:
             self._attr_effect = effect
         hs = last_state.attributes.get(ATTR_HS_COLOR)
         if (
@@ -131,17 +144,19 @@ class RgbIrBulb(LightEntity, RestoreEntity):
         ):
             self._attr_hs_color = (float(hs[0]), float(hs[1]))
 
-    async def _press(self, button: BulbCommand) -> None:
-        """Send one IR frame for a single button press.
+    async def _press_byte(self, byte: int) -> None:
+        """Send one IR frame for a given command byte.
 
         Times out after ``IR_SEND_TIMEOUT`` so an unresponsive transmitter
-        can't hold the lock indefinitely and freeze every subsequent press.
+        can't hold the lock indefinitely.
         """
         async with self._send_lock:
             try:
                 async with asyncio.timeout(IR_SEND_TIMEOUT):
                     await async_send_command(
-                        self.hass, self._transmitter, button.to_command()
+                        self.hass,
+                        self._transmitter,
+                        self._profile.command(byte),
                     )
             except TimeoutError as err:
                 _LOGGER.warning(
@@ -154,66 +169,71 @@ class RgbIrBulb(LightEntity, RestoreEntity):
                     f"within {IR_SEND_TIMEOUT}s"
                 ) from err
 
-    async def _press_repeated(self, button: BulbCommand, count: int) -> None:
-        """Press a button N times, spaced to be reliably decoded."""
+    async def _press_repeated_byte(self, byte: int, count: int) -> None:
+        """Press a byte N times, spaced to be reliably decoded."""
         for i in range(count):
             if i:
                 await asyncio.sleep(INTER_PRESS_DELAY)
-            await self._press(button)
+            await self._press_byte(byte)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the bulb on, optionally setting colour, effect, or brightness."""
         was_on = self._attr_is_on
         sent_anything = False
+        profile = self._profile
 
-        if not was_on:
-            await self._press(BulbCommand.ON)
+        if not was_on and profile.on_byte is not None:
+            await self._press_byte(profile.on_byte)
             # Physical bulb wakes at full brightness on the row last selected.
             self._step = BRIGHTNESS_STEPS
             sent_anything = True
 
-        # Colour wheel input — snap to nearest reachable preset.
+        # Colour wheel → snap to nearest preset
         if (hs := kwargs.get(ATTR_HS_COLOR)) is not None:
             hue, saturation = float(hs[0]), float(hs[1])
-            button = nearest_colour_preset(hue, saturation)
-            if sent_anything:
-                await asyncio.sleep(INTER_PRESS_DELAY)
-            await self._press(button)
-            # Snap the reported colour to the preset we actually sent, so the
-            # wheel cursor honestly reflects what the bulb did.
-            if button == BulbCommand.WHITE:
-                self._attr_hs_color = (0.0, 0.0)
-            else:
-                self._attr_hs_color = COLOUR_PRESETS_HS[button]
-            # Selecting a colour cancels any active animation.
-            self._attr_effect = None
-            self._step = BRIGHTNESS_STEPS
-            sent_anything = True
-
-        # Effect — only Flash / Smooth here; named colours go through hs_color.
-        if (effect := kwargs.get(ATTR_EFFECT)) is not None:
-            button = EFFECT_TO_BUTTON.get(effect)
-            if button is None:
-                _LOGGER.warning("Unknown effect %s, ignoring", effect)
-            else:
+            effect = nearest_colour_effect(profile, hue, saturation)
+            if effect is not None and (preset := profile.colours.get(effect)):
                 if sent_anything:
                     await asyncio.sleep(INTER_PRESS_DELAY)
-                await self._press(button)
-                self._attr_effect = effect
+                await self._press_byte(preset.byte)
+                # Snap the reported colour so the wheel cursor reflects what
+                # the bulb actually did.
+                if preset.saturation < 1.0:
+                    self._attr_hs_color = (0.0, 0.0)
+                else:
+                    self._attr_hs_color = (preset.hue, preset.saturation)
+                self._attr_effect = None
                 self._step = BRIGHTNESS_STEPS
                 sent_anything = True
 
-        # Brightness — dead-reckoned BR+/BR- presses.
-        if (brightness := kwargs.get(ATTR_BRIGHTNESS)) is not None:
+        # Effect (animation buttons; colours go through hs_color path above)
+        if (effect_name := kwargs.get(ATTR_EFFECT)) is not None:
+            byte = profile.effect_byte(effect_name)
+            if byte is None:
+                _LOGGER.warning("Unknown effect %s, ignoring", effect_name)
+            else:
+                if sent_anything:
+                    await asyncio.sleep(INTER_PRESS_DELAY)
+                await self._press_byte(byte)
+                self._attr_effect = effect_name
+                self._step = BRIGHTNESS_STEPS
+                sent_anything = True
+
+        # Brightness — only if the profile has both ± buttons
+        if (
+            (brightness := kwargs.get(ATTR_BRIGHTNESS)) is not None
+            and profile.has_brightness
+        ):
             target = _brightness_to_step(brightness)
             delta = target - self._step
             if delta:
-                button = (
-                    BulbCommand.BRIGHTNESS_UP if delta > 0 else BulbCommand.BRIGHTNESS_DOWN
+                byte = (
+                    profile.bright_up_byte if delta > 0 else profile.bright_down_byte
                 )
+                assert byte is not None  # has_brightness guarantees this
                 if sent_anything:
                     await asyncio.sleep(INTER_PRESS_DELAY)
-                await self._press_repeated(button, abs(delta))
+                await self._press_repeated_byte(byte, abs(delta))
                 self._step = target
 
         self._attr_is_on = True
@@ -222,6 +242,7 @@ class RgbIrBulb(LightEntity, RestoreEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the bulb off."""
-        await self._press(BulbCommand.OFF)
+        if self._profile.off_byte is not None:
+            await self._press_byte(self._profile.off_byte)
         self._attr_is_on = False
         self.async_write_ha_state()
